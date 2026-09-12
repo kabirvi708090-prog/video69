@@ -143,11 +143,10 @@ def broadcast_photo(message):
         bot.edit_message_text(f"✅ **ছবি ব্রডকাস্ট সম্পন্ন!**\n\n সফল: {success}\n❌ ব্যর্থ/ব্লকড: {failed}", 
                               chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
 
-# ----------------- ব্যাকগ্রাউন্ডে পোলিং রান করা (Conflict এড়াতে) -----------------
+# ----------------- ব্যাকগ্রাউন্ডে পোলিং রান করা (Conflict ও TypeError এড়াতে) -----------------
 def start_bot_polling():
-    # পুরনো সব পেন্ডিং আপডেট মুছে ফেলে ফ্রেশ কানেকশন চালু করবে
     bot.remove_webhook()
-    bot.polling(non_stop=True, skip_pending_updates=True)
+    bot.infinity_polling(skip_pending_updates=True)
 
 # ব্যাকগ্রাউন্ড থ্রেডে বট চালানো
 threading.Thread(target=start_bot_polling, daemon=True).start()
