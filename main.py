@@ -16,7 +16,7 @@ SECRET_KEY = "my_app_secret_123"
 # TELEGRAM BOT CONFIGURATION
 # =========================================================
 
-BOT_TOKEN = "8742181210:AAGYW3emIWSrli3yI0BS6IIYa5ygT2LdcKI"
+BOT_TOKEN = "8742181210:AAFQWm__hBK1qNXtNy3EpfCg4bZSybn6So8"
 
 ADMIN_ID = 8864523429
 
