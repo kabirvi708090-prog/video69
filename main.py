@@ -18,7 +18,6 @@ def home():
 def notify_upload():
     data = request.get_json(silent=True) or {}
     
-    # Secret Key Security Check
     if data.get('secret') != SECRET_KEY:
         return jsonify({"status": "error", "message": "Unauthorized"}), 401
 
@@ -31,7 +30,6 @@ def notify_upload():
     if not users:
         return jsonify({"status": "warning", "message": "No users found in database"}), 200
 
-    # Send notification in background thread to avoid timeout
     def send_to_all():
         for u_id in users:
             try:
@@ -50,7 +48,6 @@ ADMIN_ID = 8864523429               # আপনার numeric Telegram ID
 bot = telebot.TeleBot(BOT_TOKEN)
 USER_FILE = "users.txt"
 
-# ইউজার আইডি সেভ করার ফাংশন
 def save_user(user_id):
     users = set()
     if os.path.exists(USER_FILE):
@@ -60,20 +57,17 @@ def save_user(user_id):
         with open(USER_FILE, "a") as f:
             f.write(f"{user_id}\n")
 
-# সব ইউজার আইডি পাওয়ার ফাংশন
 def get_users():
     if os.path.exists(USER_FILE):
         with open(USER_FILE, "r") as f:
             return [line.strip() for line in f if line.strip()]
     return []
 
-# /start কমান্ড
 @bot.message_handler(commands=['start'])
 def start(message):
     save_user(message.chat.id)
     bot.reply_to(message, "👋 স্বাগতম! OPEN 🥵 বাটনে ক্লিক করে এক্স ভিডিও দেখুন 👇🏿👇🏿")
 
-# অতি সংক্ষিপ্ত ইউজার দেখার কমান্ড (/u অথবা শুধু u)
 @bot.message_handler(func=lambda message: message.text in ['/u', 'u', 'U', '/U'])
 def show_user_count(message):
     if message.chat.id != ADMIN_ID:
@@ -83,7 +77,6 @@ def show_user_count(message):
     total_users = len(users)
     bot.reply_to(message, f"📊 **বর্তমানে মোট ইউজার সংখ্যা:** `{total_users}` জন", parse_mode="Markdown")
 
-# টেক্সট মেসেজ ব্রডকাস্ট (/broadcast আপনার মেসেজ)
 @bot.message_handler(commands=['broadcast'])
 def broadcast_text(message):
     if message.chat.id != ADMIN_ID:
@@ -113,7 +106,6 @@ def broadcast_text(message):
     bot.edit_message_text(f"✅ **ব্রডকাস্ট সম্পন্ন!**\n\n সফল: {success}\n❌ ব্যর্থ/ব্লকড: {failed}", 
                           chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
 
-# ছবি ব্রডকাস্ট (ছবি সেন্ড করে ক্যাপশনে /broadcast লিখলে)
 @bot.message_handler(content_types=['photo'])
 def broadcast_photo(message):
     if message.chat.id != ADMIN_ID:
@@ -143,12 +135,11 @@ def broadcast_photo(message):
         bot.edit_message_text(f"✅ **ছবি ব্রডকাস্ট সম্পন্ন!**\n\n সফল: {success}\n❌ ব্যর্থ/ব্লকড: {failed}", 
                               chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
 
-# ----------------- ব্যাকগ্রাউন্ডে পোলিং রান করা (Conflict ও TypeError এড়াতে) -----------------
+# ----------------- ব্যাকগ্রাউন্ডে বট পোলিং -----------------
 def start_bot_polling():
-    bot.remove_webhook()
-    bot.infinity_polling(skip_pending_updates=True)
+    bot.remove_webhook(drop_pending_updates=True)
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
 
-# ব্যাকগ্রাউন্ড থ্রেডে বট চালানো
 threading.Thread(target=start_bot_polling, daemon=True).start()
 
 if __name__ == '__main__':
