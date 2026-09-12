@@ -4,18 +4,15 @@ import os
 import threading
 from flask import Flask, request, jsonify
 
-# =========================================================
-# FLASK WEB SERVER
-# =========================================================
+# ==============================
+# Flask App
+# ==============================
 
 app = Flask(__name__)
 
 SECRET_KEY = "my_app_secret_123"
 
-# =========================================================
-# TELEGRAM BOT CONFIGURATION
-# =========================================================
-
+# আপনার নতুন Telegram Bot Token এখানে বসান
 BOT_TOKEN = "8742181210:AAFQWm__hBK1qNXtNy3EpfCg4bZSybn6So8"
 
 ADMIN_ID = 8864523429
@@ -24,45 +21,35 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 USER_FILE = "users.txt"
 
-# =========================================================
-# DUPLICATE NOTIFICATION PROTECTION
-# =========================================================
-
+# একই content বারবার notification না পাঠানোর জন্য
 sent_notifications = set()
 notification_lock = threading.Lock()
 
 
-# =========================================================
-# HOME / HEALTH CHECK
-# =========================================================
+# ==============================
+# Home
+# ==============================
 
 @app.route("/")
 def home():
     return "Bot is live and running 24/7!"
 
 
-# =========================================================
-# AUTOMATIC POST / VIDEO NOTIFICATION
-# =========================================================
+# ==============================
+# Telegram Notification
+# ==============================
 
 @app.route("/notify_upload", methods=["POST"])
 def notify_upload():
 
     data = request.get_json(silent=True) or {}
 
-    # -----------------------------------------------------
-    # Security check
-    # -----------------------------------------------------
-
+    # Secret check
     if data.get("secret") != SECRET_KEY:
         return jsonify({
             "status": "error",
             "message": "Unauthorized"
         }), 401
-
-    # -----------------------------------------------------
-    # Get content information
-    # -----------------------------------------------------
 
     title = data.get(
         "title",
@@ -86,28 +73,22 @@ def notify_upload():
         )
     )
 
-    # -----------------------------------------------------
-    # Prevent duplicate notification
-    # -----------------------------------------------------
-
     notification_key = f"{content_type}:{content_id}"
 
+    # Duplicate notification আটকানো
     with notification_lock:
 
         if notification_key in sent_notifications:
 
             return jsonify({
                 "status": "already_sent",
+                "telegram_sent": True,
                 "message": "Notification already sent"
             }), 200
 
-        sent_notifications.add(
-            notification_key
-        )
-
-    # -----------------------------------------------------
-    # Create notification message
-    # -----------------------------------------------------
+    # ==============================
+    # Message তৈরি
+    # ==============================
 
     if content_type == "video":
 
@@ -127,93 +108,111 @@ def notify_upload():
             f"{app_url}"
         )
 
-    # -----------------------------------------------------
-    # Get all Telegram users
-    # -----------------------------------------------------
+    # ==============================
+    # Users নেওয়া
+    # ==============================
 
     users = get_users()
 
     if not users:
 
-        # Allow another attempt if there are no users
-        with notification_lock:
-            sent_notifications.discard(
-                notification_key
-            )
+        print("No Telegram users found.")
 
         return jsonify({
             "status": "warning",
+            "telegram_sent": False,
+            "total_users": 0,
+            "successful_sends": 0,
+            "failed_sends": 0,
             "message": "No users found"
         }), 200
 
-    # -----------------------------------------------------
-    # Send notification in background
-    # -----------------------------------------------------
+    # ==============================
+    # Telegram Send
+    # ==============================
 
-    def send_to_all():
+    successful_sends = 0
+    failed_sends = 0
+    errors = []
 
-        success = 0
-        failed = 0
+    for user_id in users:
 
-        for user_id in users:
+        try:
 
-            try:
+            result = bot.send_message(
+                int(user_id),
+                message_text,
+                disable_web_page_preview=False
+            )
 
-                bot.send_message(
-                    int(user_id),
-                    message_text,
-                    disable_web_page_preview=False
-                )
+            if result:
 
-                success += 1
-
-                # Telegram rate-limit protection
-                time.sleep(0.05)
-
-            except Exception as e:
-
-                failed += 1
+                successful_sends += 1
 
                 print(
-                    f"Notification failed for "
-                    f"{user_id}: {e}"
+                    f"Telegram SUCCESS -> user {user_id}"
                 )
 
-        print(
-            "================================="
-        )
+            time.sleep(0.05)
+
+        except Exception as e:
+
+            failed_sends += 1
+
+            error_text = str(e)
+
+            errors.append({
+                "user_id": str(user_id),
+                "error": error_text
+            })
+
+            print(
+                f"Telegram FAILED -> user {user_id}: {error_text}"
+            )
+
+    # ==============================
+    # Result
+    # ==============================
+
+    if successful_sends > 0:
+
+        with notification_lock:
+            sent_notifications.add(notification_key)
 
         print(
-            "Notification broadcast completed"
+            f"Notification completed: "
+            f"{successful_sends} successful, "
+            f"{failed_sends} failed"
         )
 
-        print(
-            f"Success: {success}"
-        )
+        return jsonify({
+            "status": "success",
+            "telegram_sent": True,
+            "total_users": len(users),
+            "successful_sends": successful_sends,
+            "failed_sends": failed_sends,
+            "errors": errors
+        }), 200
 
-        print(
-            f"Failed: {failed}"
-        )
-
-        print(
-            "================================="
-        )
-
-    threading.Thread(
-        target=send_to_all,
-        daemon=True
-    ).start()
+    # সব send ব্যর্থ হলে
+    print(
+        f"Notification FAILED: "
+        f"{failed_sends} failed"
+    )
 
     return jsonify({
-        "status": "success",
-        "message": "Notification broadcast started",
-        "total_users": len(users)
-    }), 200
+        "status": "failed",
+        "telegram_sent": False,
+        "total_users": len(users),
+        "successful_sends": successful_sends,
+        "failed_sends": failed_sends,
+        "errors": errors
+    }), 500
 
 
-# =========================================================
-# SAVE USER
-# =========================================================
+# ==============================
+# Save User
+# ==============================
 
 def save_user(user_id):
 
@@ -244,9 +243,9 @@ def save_user(user_id):
             )
 
 
-# =========================================================
-# GET USERS
-# =========================================================
+# ==============================
+# Get Users
+# ==============================
 
 def get_users():
 
@@ -266,18 +265,14 @@ def get_users():
         ]
 
 
-# =========================================================
-# /START
-# =========================================================
+# ==============================
+# /start
+# ==============================
 
-@bot.message_handler(
-    commands=["start"]
-)
+@bot.message_handler(commands=["start"])
 def start(message):
 
-    save_user(
-        message.chat.id
-    )
+    save_user(message.chat.id)
 
     bot.reply_to(
         message,
@@ -288,13 +283,13 @@ def start(message):
     )
 
 
-# =========================================================
-# USER COUNT — ADMIN ONLY
-# =========================================================
+# ==============================
+# User Count
+# ==============================
 
 @bot.message_handler(
     func=lambda message:
-        message.text in ["/u", "u", "U", "/U"]
+    message.text in ["/u", "u", "U", "/U"]
 )
 def show_user_count(message):
 
@@ -303,22 +298,18 @@ def show_user_count(message):
 
     users = get_users()
 
-    total_users = len(users)
-
     bot.reply_to(
         message,
         f"📊 বর্তমানে মোট ইউজার সংখ্যা: "
-        f"{total_users} জন"
+        f"{len(users)} জন"
     )
 
 
-# =========================================================
-# TEXT BROADCAST — ADMIN ONLY
-# =========================================================
+# ==============================
+# Text Broadcast
+# ==============================
 
-@bot.message_handler(
-    commands=["broadcast"]
-)
+@bot.message_handler(commands=["broadcast"])
 def broadcast_text(message):
 
     if message.chat.id != ADMIN_ID:
@@ -379,8 +370,7 @@ def broadcast_text(message):
             failed += 1
 
             print(
-                f"Broadcast error "
-                f"{user_id}: {e}"
+                f"Broadcast error {user_id}: {e}"
             )
 
     try:
@@ -397,9 +387,9 @@ def broadcast_text(message):
         pass
 
 
-# =========================================================
-# PHOTO BROADCAST — ADMIN ONLY
-# =========================================================
+# ==============================
+# Photo Broadcast
+# ==============================
 
 @bot.message_handler(
     content_types=["photo"]
@@ -482,9 +472,9 @@ def broadcast_photo(message):
         pass
 
 
-# =========================================================
-# BOT POLLING
-# =========================================================
+# ==============================
+# Telegram Polling
+# ==============================
 
 def start_bot_polling():
 
@@ -509,15 +499,19 @@ def start_bot_polling():
         )
 
 
+# ==============================
+# Start Telegram Bot
+# ==============================
+
 threading.Thread(
     target=start_bot_polling,
     daemon=True
 ).start()
 
 
-# =========================================================
-# START FLASK SERVER
-# =========================================================
+# ==============================
+# Start Flask
+# ==============================
 
 if __name__ == "__main__":
 
