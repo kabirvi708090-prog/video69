@@ -2,14 +2,46 @@ import telebot
 import time
 import os
 import threading
-from flask import Flask
+from flask import Flask, request, jsonify
 
-# ----------------- Render-কে ২৪/৭ ফ্রিতে জাগিয়ে রাখার ওয়েবাসাইট -----------------
+# ----------------- Flask Web Server -----------------
 app = Flask('')
+
+SECRET_KEY = "my_app_secret_123"
 
 @app.route('/')
 def home():
     return "Bot is live and running 24/7!"
+
+# ----------------- Webhook for App Notifications -----------------
+@app.route('/notify_upload', methods=['POST'])
+def notify_upload():
+    data = request.get_json(silent=True) or {}
+    
+    # Secret Key Security Check
+    if data.get('secret') != SECRET_KEY:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+
+    video_title = data.get('title', 'নতুন ভিডিও পোস্ট করা হয়েছে!')
+    app_url = data.get('app_url', 'https://t.me/FbHq11bot/deshimal')
+
+    message_text = f"🎬 **নতুন ভিডিও আপলোড হয়েছে!**\n\n📌 **টাইটেল:** {video_title}\n\n👇 এখনই দেখতে নিচের লিংকে ক্লিক করুন:\n{app_url}"
+
+    users = get_users()
+    if not users:
+        return jsonify({"status": "warning", "message": "No users found in database"}), 200
+
+    # Send notification in background thread to avoid timeout
+    def send_to_all():
+        for u_id in users:
+            try:
+                bot.send_message(u_id, message_text, parse_mode="Markdown")
+                time.sleep(0.04)
+            except Exception:
+                pass
+
+    threading.Thread(target=send_to_all).start()
+    return jsonify({"status": "success", "message": "Notification broadcast started"}), 200
 
 def run_web():
     app.run(host='0.0.0.0', port=8080)
@@ -17,7 +49,7 @@ def run_web():
 # ব্যাকগ্রাউন্ডে ওয়েব সার্ভার চালু করা
 threading.Thread(target=run_web).start()
 
-# ----------------- আপনার তথ্য বসান -----------------
+# ----------------- আপনার তথ্য -----------------
 BOT_TOKEN = "8742181210:AAEwRdn0TP7O3ybfdo9bfUsdWEaVvG1Zm7w"  # BotFather এর টোকেন
 ADMIN_ID = 8864523429               # আপনার নিজের numeric Telegram ID
 # ----------------------------------------------------
