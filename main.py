@@ -50,7 +50,7 @@ def run_web():
 threading.Thread(target=run_web).start()
 
 # ----------------- আপনার তথ্য -----------------
-BOT_TOKEN = "8742181210:AAEpMDXFzKg7uqkvRoPPiZuGcl8DQUrPArc"  # BotFather এর টোকেন
+BOT_TOKEN = "8742181210:AAGYW3emIWSrli3yI0BS6IIYa5YGt2LdcKI"  # BotFather এর টোকেন
 ADMIN_ID = 8864523429               # আপনার নিজের numeric Telegram ID
 # ----------------------------------------------------
 
