@@ -137,8 +137,8 @@ def broadcast_photo(message):
 
 # ----------------- ব্যাকগ্রাউন্ডে বট পোলিং -----------------
 def start_bot_polling():
-    bot.remove_webhook(drop_pending_updates=True)
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    bot.remove_webhook()
+    bot.infinity_polling()
 
 threading.Thread(target=start_bot_polling, daemon=True).start()
 
