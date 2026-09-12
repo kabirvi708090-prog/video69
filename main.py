@@ -5,7 +5,7 @@ import threading
 from flask import Flask, request, jsonify
 
 # ----------------- Flask Web Server -----------------
-app = Flask('')
+app = Flask(__name__)
 
 SECRET_KEY = "my_app_secret_123"
 
@@ -43,16 +43,9 @@ def notify_upload():
     threading.Thread(target=send_to_all).start()
     return jsonify({"status": "success", "message": "Notification broadcast started"}), 200
 
-def run_web():
-    app.run(host='0.0.0.0', port=8080)
-
-# ব্যাকগ্রাউন্ডে ওয়েব সার্ভার চালু করা
-threading.Thread(target=run_web).start()
-
-# ----------------- আপনার তথ্য -----------------
-BOT_TOKEN = "8742181210:AAGYW3emIWSrli3yI0BS6IIYa5YGt2LdcKI"  # BotFather এর টোকেন
-ADMIN_ID = 8864523429               # আপনার নিজের numeric Telegram ID
-# ----------------------------------------------------
+# ----------------- তথ্য ও কনফিগারেশন -----------------
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "8742181210:AAGYW3emIWSrli3yI0BS6IIYa5YGt2LdcKI")
+ADMIN_ID = 8864523429               # আপনার numeric Telegram ID
 
 bot = telebot.TeleBot(BOT_TOKEN)
 USER_FILE = "users.txt"
@@ -113,7 +106,7 @@ def broadcast_text(message):
         try:
             bot.send_message(u_id, text_to_send)
             success += 1
-            time.sleep(0.04)  # Telegram এরর/ব্লক এড়াতে
+            time.sleep(0.04)
         except Exception:
             failed += 1
 
@@ -150,6 +143,15 @@ def broadcast_photo(message):
         bot.edit_message_text(f"✅ **ছবি ব্রডকাস্ট সম্পন্ন!**\n\n সফল: {success}\n❌ ব্যর্থ/ব্লকড: {failed}", 
                               chat_id=message.chat.id, message_id=status_msg.message_id, parse_mode="Markdown")
 
-# বট ২৪/৭ চালিয়ে রাখার জন্য
-print("Bot is running 24/7...")
-bot.infinity_polling(timeout=10, long_polling_timeout=5)
+# ----------------- ব্যাকগ্রাউন্ডে পোলিং রান করা (Conflict এড়াতে) -----------------
+def start_bot_polling():
+    # পুরনো সব পেন্ডিং আপডেট মুছে ফেলে ফ্রেশ কানেকশন চালু করবে
+    bot.remove_webhook()
+    bot.polling(non_stop=True, skip_pending_updates=True)
+
+# ব্যাকগ্রাউন্ড থ্রেডে বট চালানো
+threading.Thread(target=start_bot_polling, daemon=True).start()
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
