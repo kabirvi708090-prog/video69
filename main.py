@@ -5,13 +5,11 @@ import telebot
 
 from flask import Flask, request, jsonify
 
-app = Flask(name)
+app = Flask(__name__)
 
-=========================
-
-CONFIG
-
-=========================
+# =========================
+# CONFIG
+# =========================
 
 BOT_TOKEN = "8742181210:AAFQWm__hBK1qNXtNy3EpfCg4bZSybn6So8"
 
@@ -25,666 +23,661 @@ WEBHOOK_SECRET = "telegram_webhook_secret_987654"
 
 USER_FILE = "users.txt"
 
+# ভিডিও বট লিংক
+VIDEO_BOT_LINK = "https://t.me/FbHq11bot/deshimal"
+
 bot = telebot.TeleBot(BOT_TOKEN)
 
 sent_notifications = set()
 notification_lock = threading.Lock()
 
-=========================
 
-HOME
-
-=========================
+# =========================
+# HOME
+# =========================
 
 @app.route("/")
 def home():
-return "Bot is live and running 24/7!"
+    return "Bot is live and running 24/7!"
 
-=========================
 
-TELEGRAM WEBHOOK
-
-=========================
+# =========================
+# TELEGRAM WEBHOOK
+# =========================
 
 @app.route("/telegram_webhook/" + WEBHOOK_SECRET, methods=["POST"])
 def telegram_webhook():
 
-try:  
-    json_string = request.get_data().decode("utf-8")  
+    try:
+        json_string = request.get_data().decode("utf-8")
 
-    update = telebot.types.Update.de_json(json_string)  
+        update = telebot.types.Update.de_json(json_string)
 
-    bot.process_new_updates([update])  
+        bot.process_new_updates([update])
 
-    return jsonify({"ok": True}), 200  
+        return jsonify({"ok": True}), 200
 
-except Exception as e:  
+    except Exception as e:
 
-    print("Webhook error:", e)  
+        print("Webhook error:", e)
 
-    return jsonify({  
-        "ok": False,  
-        "error": str(e)  
-    }), 500
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
 
-=========================
 
-APP NOTIFICATION
-
-=========================
+# =========================
+# APP NOTIFICATION
+# =========================
 
 @app.route("/notify_upload", methods=["POST"])
 def notify_upload():
 
-data = request.get_json(silent=True) or {}  
+    data = request.get_json(silent=True) or {}
 
-if data.get("secret") != SECRET_KEY:  
+    if data.get("secret") != SECRET_KEY:
 
-    return jsonify({  
-        "status": "error",  
-        "message": "Unauthorized"  
-    }), 401  
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized"
+        }), 401
 
 
-title = data.get(  
-    "title",  
-    "নতুন পোস্ট প্রকাশিত হয়েছে!"  
-)  
+    title = data.get(
+        "title",
+        "নতুন পোস্ট প্রকাশিত হয়েছে!"
+    )
 
-app_url = data.get("app_url", "")  
+    app_url = data.get("app_url", "")
 
-content_type = data.get(  
-    "type",  
-    "post"  
-)  
+    content_type = data.get(
+        "type",
+        "post"
+    )
 
-content_id = str(  
-    data.get(  
-        "content_id",  
-        app_url  
-    )  
-)  
+    content_id = str(
+        data.get(
+            "content_id",
+            app_url
+        )
+    )
 
 
-notification_key = (  
-    f"{content_type}:{content_id}"  
-)  
+    notification_key = (
+        f"{content_type}:{content_id}"
+    )
 
 
-with notification_lock:  
+    with notification_lock:
 
-    if notification_key in sent_notifications:  
+        if notification_key in sent_notifications:
 
-        return jsonify({  
-            "status": "already_sent",  
-            "telegram_sent": True,  
-            "message": "Notification already sent"  
-        }), 200  
+            return jsonify({
+                "status": "already_sent",
+                "telegram_sent": True,
+                "message": "Notification already sent"
+            }), 200
 
 
-# =========================  
-# MESSAGE  
-# =========================  
+    # =========================
+    # MESSAGE
+    # =========================
 
-if content_type == "video":  
+    if content_type == "video":
 
-    message_text = (  
-        "🎬 নতুন ভিডিও আপলোড হয়েছে!\n\n"  
-        f"📌 টাইটেল: {title}\n\n"  
-        "👇 এখনই দেখতে ক্লিক করুন:\n"  
-        f"{app_url}"  
-    )  
+        message_text = (
+            "🎬 নতুন ভিডিও আপলোড হয়েছে!\n\n"
+            f"📌 টাইটেল: {title}\n\n"
+            "👇 এখনই দেখতে ক্লিক করুন:\n"
+            f"{app_url}\n\n"
+            "🤖 ভিডিও বট:\n"
+            f"{https://t.me/FbHq11bot/deshimal}"
+        )
 
-else:  
+    else:
 
-    message_text = (  
-        "🆕 নতুন পোস্ট প্রকাশিত হয়েছে!\n\n"  
-        f"📌 টাইটেল: {title}\n\n"  
-        "👇 এখনই দেখতে ক্লিক করুন:\n"  
-        f"{app_url}"  
-    )  
+        message_text = (
+            "🆕 নতুন পোস্ট প্রকাশিত হয়েছে!\n\n"
+            f"📌 টাইটেল: {title}\n\n"
+            "👇 এখনই দেখতে ক্লিক করুন:\n"
+            f"{app_url}"
+        )
 
 
-# =========================  
-# USERS  
-# =========================  
+    # =========================
+    # USERS
+    # =========================
 
-users = get_users()  
+    users = get_users()
 
 
-if not users:  
+    if not users:
 
-    print("No Telegram users found.")  
+        print("No Telegram users found.")
 
-    return jsonify({  
-        "status": "warning",  
-        "telegram_sent": False,  
-        "total_users": 0,  
-        "successful_sends": 0,  
-        "failed_sends": 0,  
-        "message": "No users found"  
-    }), 200  
+        return jsonify({
+            "status": "warning",
+            "telegram_sent": False,
+            "total_users": 0,
+            "successful_sends": 0,
+            "failed_sends": 0,
+            "message": "No users found"
+        }), 200
 
 
-successful_sends = 0  
-failed_sends = 0  
-errors = []  
+    successful_sends = 0
+    failed_sends = 0
+    errors = []
 
 
-# =========================  
-# SEND  
-# =========================  
+    # =========================
+    # SEND
+    # =========================
 
-for user_id in users:  
+    for user_id in users:
 
-    try:  
+        try:
 
-        result = bot.send_message(  
-            int(user_id),  
-            message_text,  
-            disable_web_page_preview=False  
-        )  
+            result = bot.send_message(
+                int(user_id),
+                message_text,
+                disable_web_page_preview=False
+            )
 
-        if result:  
+            if result:
 
-            successful_sends += 1  
+                successful_sends += 1
 
-            print(  
-                f"Telegram SUCCESS -> user {user_id}"  
-            )  
+                print(
+                    f"Telegram SUCCESS -> user {user_id}"
+                )
 
-        time.sleep(0.05)  
+            time.sleep(0.05)
 
 
-    except Exception as e:  
+        except Exception as e:
 
-        failed_sends += 1  
+            failed_sends += 1
 
-        error_text = str(e)  
+            error_text = str(e)
 
-        errors.append({  
-            "user_id": str(user_id),  
-            "error": error_text  
-        })  
+            errors.append({
+                "user_id": str(user_id),
+                "error": error_text
+            })
 
-        print(  
-            f"Telegram FAILED -> user {user_id}: "  
-            f"{error_text}"  
-        )  
+            print(
+                f"Telegram FAILED -> user {user_id}: "
+                f"{error_text}"
+            )
 
 
-# =========================  
-# RESULT  
-# =========================  
+    # =========================
+    # RESULT
+    # =========================
 
-if successful_sends > 0:  
+    if successful_sends > 0:
 
-    with notification_lock:  
+        with notification_lock:
 
-        sent_notifications.add(  
-            notification_key  
-        )  
+            sent_notifications.add(
+                notification_key
+            )
 
 
-    print(  
-        "Notification completed: "  
-        f"{successful_sends} successful, "  
-        f"{failed_sends} failed"  
-    )  
+        print(
+            "Notification completed: "
+            f"{successful_sends} successful, "
+            f"{failed_sends} failed"
+        )
 
 
-    return jsonify({  
+        return jsonify({
 
-        "status": "success",  
+            "status": "success",
 
-        "telegram_sent": True,  
+            "telegram_sent": True,
 
-        "total_users": len(users),  
+            "total_users": len(users),
 
-        "successful_sends": successful_sends,  
+            "successful_sends": successful_sends,
 
-        "failed_sends": failed_sends,  
+            "failed_sends": failed_sends,
 
-        "errors": errors  
+            "errors": errors
 
-    }), 200  
+        }), 200
 
 
-print(  
-    f"Notification FAILED: "  
-    f"{failed_sends} failed"  
-)  
+    print(
+        f"Notification FAILED: "
+        f"{failed_sends} failed"
+    )
 
 
-return jsonify({  
+    return jsonify({
 
-    "status": "failed",  
+        "status": "failed",
 
-    "telegram_sent": False,  
+        "telegram_sent": False,
 
-    "total_users": len(users),  
+        "total_users": len(users),
 
-    "successful_sends": successful_sends,  
+        "successful_sends": successful_sends,
 
-    "failed_sends": failed_sends,  
+        "failed_sends": failed_sends,
 
-    "errors": errors  
+        "errors": errors
 
-}), 500
+    }), 500
 
-=========================
 
-USER STORAGE
-
-=========================
+# =========================
+# USER STORAGE
+# =========================
 
 def save_user(user_id):
 
-users = set()  
+    users = set()
 
-if os.path.exists(USER_FILE):  
+    if os.path.exists(USER_FILE):
 
-    with open(  
-        USER_FILE,  
-        "r",  
-        encoding="utf-8"  
-    ) as f:  
+        with open(
+            USER_FILE,
+            "r",
+            encoding="utf-8"
+        ) as f:
 
-        users = set(  
-            f.read().splitlines()  
-        )  
+            users = set(
+                f.read().splitlines()
+            )
 
 
-if str(user_id) not in users:  
+    if str(user_id) not in users:
 
-    with open(  
-        USER_FILE,  
-        "a",  
-        encoding="utf-8"  
-    ) as f:  
+        with open(
+            USER_FILE,
+            "a",
+            encoding="utf-8"
+        ) as f:
 
-        f.write(  
-            f"{user_id}\n"  
-        )
+            f.write(
+                f"{user_id}\n"
+            )
+
 
 def get_users():
 
-if not os.path.exists(USER_FILE):  
+    if not os.path.exists(USER_FILE):
 
-    return []  
+        return []
 
 
-with open(  
-    USER_FILE,  
-    "r",  
-    encoding="utf-8"  
-) as f:  
+    with open(
+        USER_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
 
-    return [  
-        line.strip()  
-        for line in f  
-        if line.strip()  
-    ]
+        return [
+            line.strip()
+            for line in f
+            if line.strip()
+        ]
 
-=========================
 
-/START
-
-=========================
+# =========================
+# /START
+# =========================
 
 @bot.message_handler(commands=["start"])
 def start(message):
 
-save_user(  
-    message.chat.id  
-)  
+    save_user(
+        message.chat.id
+    )
 
-bot.reply_to(  
+    bot.reply_to(
 
-    message,  
+        message,
 
-    "👋 স্বাগতম!\n\n"  
+        "👋 স্বাগতম!\n\n"
 
-    "আপনি সফলভাবে যুক্ত হয়েছেন।\n\n"  
+        "আপনি সফলভাবে যুক্ত হয়েছেন।\n\n"
 
-    " সবার আগে নতুন নতুন ভিডিও 🥵 পেতে "  
-    "বট স্টার্ট করুন "  
-    "/start"  
+        "সবার আগে নতুন নতুন ভিডিও 🥵 পেতে "
+        "বট স্টার্ট করুন "
+        "/start"
 
-)
+    )
 
-=========================
 
-/U
-
-=========================
+# =========================
+# /U
+# =========================
 
 @bot.message_handler(
-func=lambda message:
-message.text in [
-"/u",
-"u",
-"U",
-"/U"
-]
+    func=lambda message:
+    message.text in [
+        "/u",
+        "u",
+        "U",
+        "/U"
+    ]
 )
 def show_user_count(message):
 
-if message.chat.id != ADMIN_ID:  
+    if message.chat.id != ADMIN_ID:
 
-    return  
-
-
-users = get_users()  
+        return
 
 
-bot.reply_to(  
+    users = get_users()
 
-    message,  
 
-    f"📊 বর্তমানে মোট ইউজার সংখ্যা: "  
-    f"{len(users)} জন"  
+    bot.reply_to(
 
-)
+        message,
 
-=========================
+        f"📊 বর্তমানে মোট ইউজার সংখ্যা: "
+        f"{len(users)} জন"
 
-/BROADCAST
+    )
 
-=========================
+
+# =========================
+# /BROADCAST
+# =========================
 
 @bot.message_handler(commands=["broadcast"])
 def broadcast_text(message):
 
-if message.chat.id != ADMIN_ID:  
+    if message.chat.id != ADMIN_ID:
 
-    return  
-
-
-text_to_send = (  
-
-    message.text  
-    .replace(  
-        "/broadcast",  
-        "",  
-        1  
-    )  
-    .strip()  
-
-)  
+        return
 
 
-if not text_to_send:  
+    text_to_send = (
 
-    bot.reply_to(  
+        message.text
+        .replace(
+            "/broadcast",
+            "",
+            1
+        )
+        .strip()
 
-        message,  
-
-        "⚠️ ব্রডকাস্টের জন্য টেক্সট লিখুন।\n\n"  
-
-        "উদাহরণ:\n"  
-
-        "/broadcast সবাই কেমন আছেন?"  
-
-    )  
-
-    return  
+    )
 
 
-users = get_users()  
+    if not text_to_send:
+
+        bot.reply_to(
+
+            message,
+
+            "⚠️ ব্রডকাস্টের জন্য টেক্সট লিখুন।\n\n"
+
+            "উদাহরণ:\n"
+
+            "/broadcast সবাই কেমন আছেন?"
+
+        )
+
+        return
 
 
-if not users:  
-
-    bot.reply_to(  
-        message,  
-        "❌ কোনো ইউজার পাওয়া যায়নি।"  
-    )  
-
-    return  
+    users = get_users()
 
 
-status_msg = bot.reply_to(  
+    if not users:
 
-    message,  
+        bot.reply_to(
+            message,
+            "❌ কোনো ইউজার পাওয়া যায়নি।"
+        )
 
-    f"⏳ ব্রডকাস্ট শুরু হচ্ছে...\n"  
-    f"মোট ইউজার: {len(users)}"  
-
-)  
-
-
-success = 0  
-failed = 0  
+        return
 
 
-for user_id in users:  
+    status_msg = bot.reply_to(
 
-    try:  
+        message,
 
-        bot.send_message(  
-            int(user_id),  
-            text_to_send  
-        )  
+        f"⏳ ব্রডকাস্ট শুরু হচ্ছে...\n"
+        f"মোট ইউজার: {len(users)}"
 
-        success += 1  
-
-        time.sleep(0.05)  
+    )
 
 
-    except Exception as e:  
-
-        failed += 1  
-
-        print(  
-            f"Broadcast error "  
-            f"{user_id}: {e}"  
-        )  
+    success = 0
+    failed = 0
 
 
-try:  
+    for user_id in users:
 
-    bot.edit_message_text(  
+        try:
 
-        f"✅ ব্রডকাস্ট সম্পন্ন!\n\n"  
-        f"সফল: {success}\n"  
-        f"❌ ব্যর্থ/ব্লকড: {failed}",  
+            bot.send_message(
+                int(user_id),
+                text_to_send
+            )
 
-        chat_id=message.chat.id,  
+            success += 1
 
-        message_id=status_msg.message_id  
+            time.sleep(0.05)
 
-    )  
 
-except Exception:  
+        except Exception as e:
 
-    pass
+            failed += 1
 
-=========================
+            print(
+                f"Broadcast error "
+                f"{user_id}: {e}"
+            )
 
-PHOTO BROADCAST
 
-=========================
+    try:
+
+        bot.edit_message_text(
+
+            f"✅ ব্রডকাস্ট সম্পন্ন!\n\n"
+            f"সফল: {success}\n"
+            f"❌ ব্যর্থ/ব্লকড: {failed}",
+
+            chat_id=message.chat.id,
+
+            message_id=status_msg.message_id
+
+        )
+
+    except Exception:
+
+        pass
+
+
+# =========================
+# PHOTO BROADCAST
+# =========================
 
 @bot.message_handler(
-content_types=["photo"]
+    content_types=["photo"]
 )
 def broadcast_photo(message):
 
-if message.chat.id != ADMIN_ID:  
+    if message.chat.id != ADMIN_ID:
 
-    return  
-
-
-caption = message.caption or ""  
+        return
 
 
-if (  
-    "/broadcast" not in caption  
-    and caption != ""  
-):  
-
-    return  
+    caption = message.caption or ""
 
 
-clean_caption = (  
+    if (
+        "/broadcast" not in caption
+        and caption != ""
+    ):
 
-    caption  
-    .replace(  
-        "/broadcast",  
-        "",  
-        1  
-    )  
-    .strip()  
-
-)  
+        return
 
 
-photo_id = message.photo[-1].file_id  
+    clean_caption = (
 
-users = get_users()  
+        caption
+        .replace(
+            "/broadcast",
+            "",
+            1
+        )
+        .strip()
 
-
-if not users:  
-
-    bot.reply_to(  
-        message,  
-        "❌ কোনো ইউজার পাওয়া যায়নি।"  
-    )  
-
-    return  
+    )
 
 
-status_msg = bot.reply_to(  
+    photo_id = message.photo[-1].file_id
 
-    message,  
-
-    f"⏳ ছবি ব্রডকাস্ট শুরু হচ্ছে...\n"  
-    f"মোট ইউজার: {len(users)}"  
-
-)  
+    users = get_users()
 
 
-success = 0  
-failed = 0  
+    if not users:
+
+        bot.reply_to(
+            message,
+            "❌ কোনো ইউজার পাওয়া যায়নি।"
+        )
+
+        return
 
 
-for user_id in users:  
+    status_msg = bot.reply_to(
 
-    try:  
+        message,
 
-        bot.send_photo(  
+        f"⏳ ছবি ব্রডকাস্ট শুরু হচ্ছে...\n"
+        f"মোট ইউজার: {len(users)}"
 
-            int(user_id),  
-
-            photo_id,  
-
-            caption=clean_caption  
-
-        )  
-
-        success += 1  
-
-        time.sleep(0.05)  
+    )
 
 
-    except Exception as e:  
-
-        failed += 1  
-
-        print(  
-            f"Photo broadcast error "  
-            f"{user_id}: {e}"  
-        )  
+    success = 0
+    failed = 0
 
 
-try:  
+    for user_id in users:
 
-    bot.edit_message_text(  
+        try:
 
-        f"✅ ছবি ব্রডকাস্ট সম্পন্ন!\n\n"  
-        f"সফল: {success}\n"  
-        f"❌ ব্যর্থ/ব্লকড: {failed}",  
+            bot.send_photo(
 
-        chat_id=message.chat.id,  
+                int(user_id),
 
-        message_id=status_msg.message_id  
+                photo_id,
 
-    )  
+                caption=clean_caption
 
-except Exception:  
+            )
 
-    pass
+            success += 1
 
-=========================
+            time.sleep(0.05)
 
-WEBHOOK SETUP
 
-=========================
+        except Exception as e:
+
+            failed += 1
+
+            print(
+                f"Photo broadcast error "
+                f"{user_id}: {e}"
+            )
+
+
+    try:
+
+        bot.edit_message_text(
+
+            f"✅ ছবি ব্রডকাস্ট সম্পন্ন!\n\n"
+            f"সফল: {success}\n"
+            f"❌ ব্যর্থ/ব্লকড: {failed}",
+
+            chat_id=message.chat.id,
+
+            message_id=status_msg.message_id
+
+        )
+
+    except Exception:
+
+        pass
+
+
+# =========================
+# WEBHOOK SETUP
+# =========================
 
 def setup_webhook():
 
-time.sleep(3)  
+    time.sleep(3)
 
-try:  
+    try:
 
-    # পুরনো webhook পরিষ্কার  
-    bot.remove_webhook()  
+        # পুরনো webhook পরিষ্কার
+        bot.remove_webhook()
 
-    time.sleep(1)  
+        time.sleep(1)
 
-    webhook_url = (  
-        f"{RENDER_URL}"  
-        f"/telegram_webhook/"  
-        f"{WEBHOOK_SECRET}"  
-    )  
+        webhook_url = (
+            f"{RENDER_URL}"
+            f"/telegram_webhook/"
+            f"{WEBHOOK_SECRET}"
+        )
 
-    bot.set_webhook(  
-        url=webhook_url  
-    )  
+        bot.set_webhook(
+            url=webhook_url
+        )
 
-    print(  
-        "Telegram webhook configured:"  
-    )  
+        print(
+            "Telegram webhook configured:"
+        )
 
-    print(  
-        webhook_url  
-    )  
+        print(
+            webhook_url
+        )
 
-except Exception as e:  
+    except Exception as e:
 
-    print(  
-        "Webhook setup error:",  
-        e  
-    )
+        print(
+            "Webhook setup error:",
+            e
+        )
 
-=========================
 
-START WEBHOOK SETUP
-
-=========================
+# =========================
+# START WEBHOOK SETUP
+# =========================
 
 threading.Thread(
-target=setup_webhook,
-daemon=True
+    target=setup_webhook,
+    daemon=True
 ).start()
 
-=========================
 
-START FLASK
+# =========================
+# START FLASK
+# =========================
 
-=========================
+if __name__ == "__main__":
 
-if name == "main":
+    port = int(
+        os.environ.get(
+            "PORT",
+            8080
+        )
+    )
 
-port = int(  
-    os.environ.get(  
-        "PORT",  
-        8080  
-    )  
-)  
-
-app.run(  
-    host="0.0.0.0",  
-    port=port  
-)
+    app.run(
+        host="0.0.0.0",
+        port=port
+    )
