@@ -23,6 +23,9 @@ WEBHOOK_SECRET = "telegram_webhook_secret_987654"
 
 USER_FILE = "users.txt"
 
+# ভিডিও বট লিংক
+VIDEO_BOT_LINK = "https://t.me/FbHq11bot/deshimal"
+
 bot = telebot.TeleBot(BOT_TOKEN)
 
 sent_notifications = set()
@@ -127,7 +130,9 @@ def notify_upload():
             "🎬 নতুন ভিডিও আপলোড হয়েছে!\n\n"
             f"📌 টাইটেল: {title}\n\n"
             "👇 এখনই দেখতে ক্লিক করুন:\n"
-            f"{app_url}"
+            f"{app_url}\n\n"
+            "🤖 ভিডিও বট:\n"
+            f"{https://t.me/FbHq11bot/deshimal}"
         )
 
     else:
@@ -341,7 +346,7 @@ def start(message):
 
         "আপনি সফলভাবে যুক্ত হয়েছেন।\n\n"
 
-        " সবার আগে নতুন নতুন ভিডিও 🥵 পেতে "
+        "সবার আগে নতুন নতুন ভিডিও 🥵 পেতে "
         "বট স্টার্ট করুন "
         "/start"
 
